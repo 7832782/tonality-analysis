@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>调性分析</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .left-container {
+            max-width: 700px;
+            margin: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        select {
+            padding: 5px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .piano {
+            display: flex;
+            position: relative;
+            width: 200px;
+            height: 120px;
+        }
+
+        .white-key {
+            width: 28px;
+            height: 120px;
+            background-color: white;
+            border: 1px solid #000;
+            z-index: 1;
+        }
+
+        .black-key {
+            width: 16px;
+            height: 80px;
+            background-color: black;
+            position: absolute;
+            z-index: 2;
+        }
+
+        /* 黑键位置 */
+        .black-key:nth-child(2) {
+            left: 20px;
+        }
+
+        .black-key:nth-child(4) {
+            left: 50px;
+        }
+
+        .black-key:nth-child(7) {
+            left: 106px;
+        }
+
+        .black-key:nth-child(9) {
+            left: 136px;
+        }
+
+        .black-key:nth-child(11) {
+            left: 166px;
+        }
+
+        /* 按键按下效果 */
+        .white-key.pressed {
+            background-color: #ddd;
+        }
+
+        .black-key.pressed {
+            background-color: #333;
+        }
+
+        #result {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-left: 20px;
+            flex: 1;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #helpModal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="left-container">
+        <h1>调性分析</h1>
+        <label for="inputNotes">请输入歌曲中出现的音名（用空格隔开）：</label><br>
+        <textarea id="inputNotes" placeholder="例如: C D E F G A B"></textarea><br>
+        <div class="button-container">
+            <select id="modeSelector">
+                <option value="ionian">Ionian（伊奥尼亚调式，即自然大调）</option>
+                <option value="dorian">Dorian（多利亚调式）</option>
+                <option value="phrygian">Phrygian（弗利几亚调式）</option>
+                <option value="lydian">Lydian（利底亚调式）</option>
+                <option value="mixolydian">Mixolydian（混合利底亚调式）</option>
+                <option value="aeolian">Aeolian（艾奥利亚调式，即自然小调）</option>
+                <option value="locrian">Locrian（洛克利亚调式）</option>
+            </select>
+            <button id="helpButton">帮助</button>
+            <button id="clearButton">清空音名</button>
+            <button id="analyzeButton">分析调性</button>
+        </div>
+        <div class="piano">
+            <div class="white-key" data-note="C"></div>
+            <div class="black-key" data-note="C#"></div>
+            <div class="white-key" data-note="D"></div>
+            <div class="black-key" data-note="D#"></div>
+            <div class="white-key" data-note="E"></div>
+            <div class="white-key" data-note="F"></div>
+            <div class="black-key" data-note="F#"></div>
+            <div class="white-key" data-note="G"></div>
+            <div class="black-key" data-note="G#"></div>
+            <div class="white-key" data-note="A"></div>
+            <div class="black-key" data-note="A#"></div>
+            <div class="white-key" data-note="B"></div>
+        </div>
+    </div>
+
+    <div id="result"></div>
+
+    <!-- 帮助模态框 -->
+    <div id="helpModal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>帮助</h2>
+            <p>本程序用于分析音乐的调性。</p>
+            <p><strong>使用方法：</strong></p>
+            <p>在输入框中输入歌曲中出现的音名（用空格隔开），然后选择调式，程序会自动更新分析结果。</p>
+            <p><strong>支持的音名（无视大小写）：</strong> C, C#, D, D#, E, F, F#, G, G#, A, A#, B</p>
+        </div>
+    </div>
+
+    <script>
+        // 定义各调式的音阶间隔
+        const TONIC_INTERVALS = {
+            ionian: [0, 2, 4, 5, 7, 9, 11],
+            dorian: [0, 2, 3, 5, 7, 9, 10],
+            phrygian: [0, 1, 3, 5, 7, 8, 10],
+            lydian: [0, 2, 4, 6, 7, 9, 11],
+            mixolydian: [0, 2, 4, 5, 7, 9, 10],
+            aeolian: [0, 2, 3, 5, 7, 8, 10],
+            locrian: [0, 1, 3, 5, 6, 8, 10]
+        };
+
+        // 将音名转换为对应的数字
+        function noteNameToNumber(noteName) {
+            const noteDict = {
+                'C': 1, 'C#': 2, 'D': 3, 'D#': 4, 'E': 5, 'F': 6, 'F#': 7,
+                'G': 8, 'G#': 9, 'A': 10, 'A#': 11, 'B': 12
+            };
+            const normalizedNote = noteName.charAt(0).toUpperCase() + noteName.slice(1).toLowerCase();
+            if (!(normalizedNote in noteDict)) {
+                throw new Error(`输入的音名 ${noteName} 不合法，请检查输入格式。`);
+            }
+            return noteDict[normalizedNote];
+        }
+
+        // 根据数字获取对应的音名
+        function numberToNoteName(number) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            if (number < 1 || number > 12) {
+                throw new Error(`输入的数字 ${number} 超出有效范围，请检查。`);
+            }
+            return noteNames[number - 1];
+        }
+
+        // 生成指定调式的所有音阶
+        function generateKeysDict(mode) {
+            const keysDict = {};
+            const intervals = TONIC_INTERVALS[mode];
+            for (let i = 0; i < 12; i++) {
+                const keyName = numberToNoteName(i + 1);
+                keysDict[keyName] = intervals.map(j => (j + i) % 12 + 1);
+            }
+            return keysDict;
+        }
+
+        // 判断给定的音符数字列表属于哪个调性
+        function determineKey(notes, keysDict) {
+            const keyScores = {};
+            for (const key in keysDict) {
+                let score = 0;
+                for (const note of notes) {
+                    if (keysDict[key].includes(note)) {
+                        score += 1;
+                    } else {
+                        score -= 1;
+                    }
+                }
+                keyScores[key] = score;
+            }
+            const sortedKeys = Object.keys(keyScores).sort((a, b) => keyScores[b] - keyScores[a]);
+            const result = [];
+            for (const key of sortedKeys) {
+                result.push({ key, score: keyScores[key] });
+            }
+            return result;
+        }
+
+        // 显示帮助模态框
+        function showModal() {
+            const modal = document.getElementById("helpModal");
+            modal.style.display = "block";
+
+            const closeBtn = document.getElementsByClassName("close")[0];
+            closeBtn.onclick = function () {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function (event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+        }
+
+        // 处理输入变化或模式切换事件
+        function updateAnalysis() {
+            const userInput = document.getElementById("inputNotes").value.trim();
+            const inputNotesStr = userInput.split(/\s+/).filter(Boolean);
+            const mode = document.getElementById("modeSelector").value;
+            try {
+                const inputNotesNumbers = inputNotesStr.map(noteNameToNumber);
+
+                const keysDict = generateKeysDict(mode);
+
+                const analysisResult = determineKey(inputNotesNumbers, keysDict);
+                displayResult(analysisResult, mode);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // 处理分析按钮点击事件
+        document.getElementById("analyzeButton").onclick = function () {
+            updateAnalysis();
+            document.getElementById('inputNotes').focus();
+        };
+
+        // 处理清空按钮点击事件
+        document.getElementById("clearButton").onclick = function () {
+            document.getElementById('inputNotes').value = '';
+            document.getElementById('inputNotes').focus();
+        };
+
+        // 监听模式选择器的变化，实时更新结果
+        document.getElementById("modeSelector").addEventListener('change', function () {
+            updateAnalysis();
+            document.getElementById('inputNotes').focus();
+        });
+
+        // 显示结果
+        function displayResult(analysisResult, mode) {
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = "";
+
+            const modeNames = {
+                ionian: "Ionian",
+                dorian: "Dorian",
+                phrygian: "Phrygian",
+                lydian: "Lydian",
+                mixolydian: "Mixolydian",
+                aeolian: "Aeolian",
+                locrian: "Locrian"
+            };
+
+            for (let i = 0; i < analysisResult.length; i++) {
+                const { key, score } = analysisResult[i];
+                const scoreStr = score >= 0 ? ` ${score}` : score.toString();
+
+                const displayKey = `${key} ${modeNames[mode]}`;
+
+                const p = document.createElement("p");
+                p.textContent = `${displayKey}，权重：${scoreStr}`;
+                resultDiv.appendChild(p);
+            }
+        }
+
+        // 显示帮助模态框
+        document.getElementById("helpButton").onclick = showModal;
+
+        // 钢琴键盘按动反馈
+        const keys = document.querySelectorAll('.white-key, .black-key');
+        let isMouseDown = false;
+
+        keys.forEach(key => {
+            key.addEventListener('mousedown', () => {
+                isMouseDown = true;
+                key.classList.add('pressed');
+                const note = key.dataset.note;
+                const input = document.getElementById('inputNotes');
+                const currentValue = input.value;
+                if (currentValue) {
+                    input.value = currentValue + ' ' + note;
+                } else {
+                    input.value = note;
+                }
+                input.focus();
+            });
+
+            key.addEventListener('mouseup', () => {
+                isMouseDown = false;
+                key.classList.remove('pressed');
+                document.getElementById('inputNotes').focus();
+            });
+
+            key.addEventListener('mouseout', () => {
+                if (isMouseDown) {
+                    key.classList.remove('pressed');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
