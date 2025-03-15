@@ -136,6 +136,42 @@
             font-size: 28px;
             font-weight: bold;
         }
+
+        /* 版本信息模态框样式 */
+        #version-modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        #version-modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        #version-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        #version-close:hover,
+        #version-close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -187,6 +223,22 @@
             <p>在输入框中输入歌曲中出现的音名（用空格隔开），然后选择调式，程序会自动更新分析结果。</p>
             <p><strong>支持的音名（无视大小写）：</strong> C, C#, D, D#, E, F, F#, G, G#, A, A#, B</p>
         </div>
+    </div>
+
+    <!-- 版本信息模态框 -->
+    <div id="version-modal">
+        <div id="version-modal-content">
+            <span id="version-close">&times;</span>
+            <h2>版本信息</h2>
+            <h3>v1.0 - 2025/3/13</h3>
+            <p>创建该程序。</p>
+        </div>
+    </div>
+
+    <!-- 底部链接 -->
+    <div style="position: fixed; bottom: 20px; left: 20px;">
+        <a href="https://7832782.github.io">返回索引</a>
+        <a href="#" id="version-info-link">v1.0</a>
     </div>
 
     <script>
@@ -369,7 +421,26 @@
                 }
             });
         });
+
+        // 版本信息模态框相关代码
+        const versionModal = document.getElementById('version-modal');
+        const versionInfoLink = document.getElementById('version-info-link');
+        const versionCloseButton = document.getElementById('version-close');
+
+        versionInfoLink.addEventListener('click', function () {
+            versionModal.style.display = 'block';
+        });
+
+        versionCloseButton.addEventListener('click', function () {
+            versionModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function (event) {
+            if (event.target === versionModal) {
+                versionModal.style.display = 'none';
+            }
+        });
     </script>
 </body>
 
-</html>
+</html>    
